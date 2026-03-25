@@ -288,6 +288,46 @@
     .error-state h2 {
       color: #d32f2f;
     }
+    .lessons-toggle {
+      width: 100%;
+      padding: 0.5rem;
+      background: #fff;
+      border: 1px solid #d4cfc5;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      color: #2e7d52;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+    .lessons-toggle:hover {
+      background: #f5f3ef;
+    }
+    .lessons-toggle .arrow {
+      transition: transform 0.3s ease;
+      font-size: 0.75rem;
+    }
+    .lessons-toggle .arrow.rotated {
+      transform: rotate(180deg);
+    }
+    .lessons-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      max-height: 1000px;
+      opacity: 1;
+    }
+    .lessons-list.hidden {
+      max-height: 0;
+      padding: 0 0.5rem;
+      opacity: 0;
+      overflow: hidden;
+    }
     @media (max-width: 768px) {
       .app-container {
         flex-direction: column;
@@ -296,6 +336,25 @@
         width: 100%;
         height: auto;
         max-height: 40vh;
+        transition: transform 0.3s ease, max-height 0.3s ease, opacity 0.3s ease;
+        will-change: transform, max-height, opacity;
+        overflow: hidden;
+      }
+      .sidebar.hidden {
+        transform: translateY(-100%);
+        max-height: 0;
+        opacity: 0;
+      }
+      .main-content {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .nav-controls {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
       }
       .german-word {
         font-size: 2rem;
@@ -312,6 +371,10 @@
       <div class="sidebar-controls">
         <input type="text" id="search" class="search-box" placeholder="Search words...">
         <button id="sort-toggle" class="sort-toggle">Sort: L1→L11</button>
+        <button id="lessons-toggle" class="lessons-toggle">
+          <span class="arrow">▼</span>
+          <span>Lessons</span>
+        </button>
       </div>
       <div class="lessons-list" id="lessons-list"></div>
     </aside>
@@ -336,18 +399,60 @@
         currentWordIndex: 0,
         sortMode: 'lesson',
         expandedLessons: new Set(),
-        lastWordNumber: 1
+        lastWordNumber: 1,
+        lessonsVisible: true,
+        lastScrollPosition: 0
       };
 
       const ELEMENTS = {
         search: document.getElementById('search'),
         sortToggle: document.getElementById('sort-toggle'),
+        lessonsToggle: document.getElementById('lessons-toggle'),
         lessonsList: document.getElementById('lessons-list'),
+        sidebar: document.querySelector('.sidebar'),
+        mainContent: document.querySelector('.main-content'),
         contentArea: document.getElementById('content-area'),
         prevBtn: document.getElementById('prev-btn'),
         nextBtn: document.getElementById('next-btn'),
         wordCounter: document.getElementById('word-counter')
       };
+
+      let scrollTick = false;
+
+      function handleScroll() {
+        if (!scrollTick) {
+          window.requestAnimationFrame(() => {
+            if (window.innerWidth <= 768) {
+              const currentScrollPosition = ELEMENTS.mainContent.scrollTop;
+              const scrollDirection = currentScrollPosition > STATE.lastScrollPosition ? 'down' : 'up';
+              const scrollThreshold = 10;
+
+              if (scrollDirection === 'down' && currentScrollPosition > scrollThreshold) {
+                ELEMENTS.sidebar.classList.add('hidden');
+              } else if (scrollDirection === 'up' || currentScrollPosition <= scrollThreshold) {
+                ELEMENTS.sidebar.classList.remove('hidden');
+              }
+
+              STATE.lastScrollPosition = currentScrollPosition;
+            }
+            scrollTick = false;
+          });
+          scrollTick = true;
+        }
+      }
+
+      function toggleLessonsVisibility() {
+        STATE.lessonsVisible = !STATE.lessonsVisible;
+        const arrow = ELEMENTS.lessonsToggle.querySelector('.arrow');
+
+        if (STATE.lessonsVisible) {
+          ELEMENTS.lessonsList.classList.remove('hidden');
+          arrow.classList.remove('rotated');
+        } else {
+          ELEMENTS.lessonsList.classList.add('hidden');
+          arrow.classList.add('rotated');
+        }
+      }
 
       async function fetchWords() {
         try {
@@ -636,6 +741,8 @@
 
       ELEMENTS.search.addEventListener('input', (e) => filterWords(e.target.value));
       ELEMENTS.sortToggle.addEventListener('click', toggleSort);
+      ELEMENTS.lessonsToggle.addEventListener('click', toggleLessonsVisibility);
+      ELEMENTS.mainContent.addEventListener('scroll', handleScroll, { passive: true });
       ELEMENTS.prevBtn.addEventListener('click', goToPrevious);
       ELEMENTS.nextBtn.addEventListener('click', goToNext);
 
