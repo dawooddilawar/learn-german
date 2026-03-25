@@ -11,32 +11,38 @@ function createApp(db) {
 
   // API Routes
 
-  // GET /api/words - Get all words with pagination
+  // GET /api/words - Get all words
   app.get('/api/words', (req, res) => {
-    const page = parseInt(req.query.page) || 1;
-    const perPage = parseInt(req.query.per_page) || 20;
-    const offset = (page - 1) * perPage;
-
-    // Get total count
-    const countResult = db.prepare('SELECT COUNT(*) as total FROM words').get();
-    const total = countResult.total;
-    const totalPages = Math.ceil(total / perPage);
-
-    // Get paginated words
     const words = db.prepare(`
-      SELECT number, word, lesson, type, gender, plural, meanings_en, sentences, phrases
+      SELECT id, number, word, lesson, type, gender, plural, meanings_en
       FROM words
       ORDER BY number ASC
-      LIMIT ? OFFSET ?
-    `).all(perPage, offset);
+    `).all();
 
-    res.json({
-      words,
-      page,
-      perPage,
-      total,
-      totalPages
+    // Attach sentences and phrases for each word
+    const wordsWithRelations = words.map(word => {
+      const sentences = db.prepare(`
+        SELECT sentence_en as en, sentence_de as de
+        FROM sentences
+        WHERE word_id = ?
+        ORDER BY id ASC
+      `).all(word.id);
+
+      const phrases = db.prepare(`
+        SELECT phrase_en as en, phrase_de as de
+        FROM phrases
+        WHERE word_id = ?
+        ORDER BY id ASC
+      `).all(word.id);
+
+      return {
+        ...word,
+        sentences: JSON.stringify(sentences),
+        phrases: JSON.stringify(phrases)
+      };
     });
+
+    res.json(wordsWithRelations);
   });
 
   // GET /api/word/:number - Get a single word by number
@@ -44,7 +50,7 @@ function createApp(db) {
     const { number } = req.params;
 
     const word = db.prepare(`
-      SELECT number, word, lesson, type, gender, plural, meanings_en, sentences, phrases
+      SELECT id, number, word, lesson, type, gender, plural, meanings_en
       FROM words
       WHERE number = ?
     `).get(number);
@@ -53,7 +59,26 @@ function createApp(db) {
       return res.status(404).json({ error: 'Word not found' });
     }
 
-    res.json(word);
+    // Get sentences and phrases
+    const sentences = db.prepare(`
+      SELECT sentence_en as en, sentence_de as de
+      FROM sentences
+      WHERE word_id = ?
+      ORDER BY id ASC
+    `).all(word.id);
+
+    const phrases = db.prepare(`
+      SELECT phrase_en as en, phrase_de as de
+      FROM phrases
+      WHERE word_id = ?
+      ORDER BY id ASC
+    `).all(word.id);
+
+    res.json({
+      ...word,
+      sentences: JSON.stringify(sentences),
+      phrases: JSON.stringify(phrases)
+    });
   });
 
   // GET /api/search - Search words
@@ -68,27 +93,69 @@ function createApp(db) {
 
     // Try exact word match first
     const exactMatch = db.prepare(`
-      SELECT number, word, lesson, type, gender, plural, meanings_en, sentences, phrases
+      SELECT id, number, word, lesson, type, gender, plural, meanings_en
       FROM words
       WHERE word = ?
     `).all(q);
 
     if (exactMatch.length > 0) {
-      return res.json({ words: exactMatch });
+      const wordsWithRelations = exactMatch.map(word => {
+        const sentences = db.prepare(`
+          SELECT sentence_en as en, sentence_de as de
+          FROM sentences
+          WHERE word_id = ?
+          ORDER BY id ASC
+        `).all(word.id);
+
+        const phrases = db.prepare(`
+          SELECT phrase_en as en, phrase_de as de
+          FROM phrases
+          WHERE word_id = ?
+          ORDER BY id ASC
+        `).all(word.id);
+
+        return {
+          ...word,
+          sentences: JSON.stringify(sentences),
+          phrases: JSON.stringify(phrases)
+        };
+      });
+
+      return res.json({ words: wordsWithRelations });
     }
 
     // Fall back to partial search
     const words = db.prepare(`
-      SELECT number, word, lesson, type, gender, plural, meanings_en, sentences, phrases
+      SELECT id, number, word, lesson, type, gender, plural, meanings_en
       FROM words
       WHERE word LIKE ?
          OR meanings_en LIKE ?
-         OR sentences LIKE ?
-         OR phrases LIKE ?
       ORDER BY number ASC
-    `).all(searchTerm, searchTerm, searchTerm, searchTerm);
+    `).all(searchTerm, searchTerm);
 
-    res.json({ words });
+    const wordsWithRelations = words.map(word => {
+      const sentences = db.prepare(`
+        SELECT sentence_en as en, sentence_de as de
+        FROM sentences
+        WHERE word_id = ?
+        ORDER BY id ASC
+      `).all(word.id);
+
+      const phrases = db.prepare(`
+        SELECT phrase_en as en, phrase_de as de
+        FROM phrases
+        WHERE word_id = ?
+        ORDER BY id ASC
+      `).all(word.id);
+
+      return {
+        ...word,
+        sentences: JSON.stringify(sentences),
+        phrases: JSON.stringify(phrases)
+      };
+    });
+
+    res.json({ words: wordsWithRelations });
   });
 
   // GET /api/progress - Get current progress
@@ -133,7 +200,7 @@ function createApp(db) {
 // Create database connection and start server if run directly
 if (require.main === module) {
   const Database = require('better-sqlite3');
-  const dbPath = path.join(__dirname, 'data', 'words.db');
+  const dbPath = path.join(__dirname, 'data', 'db.sqlite');
   const db = new Database(dbPath);
 
   const app = createApp(db);

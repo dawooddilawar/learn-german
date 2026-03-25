@@ -2,9 +2,646 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>B1 Wortschatz</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      background: #faf8f4;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    .app-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 260px;
+      background: #f5f3ef;
+      border-right: 1px solid #e8e6e1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 1px solid #e8e6e1;
+      background: #faf8f4;
+    }
+    .sidebar-header h1 {
+      font-size: 1.25rem;
+      color: #2e7d52;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .sidebar-controls {
+      padding: 0.75rem;
+      border-bottom: 1px solid #e8e6e1;
+    }
+    .search-box {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d4cfc5;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+    .sort-toggle {
+      width: 100%;
+      padding: 0.5rem;
+      background: #fff;
+      border: 1px solid #d4cfc5;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      color: #2e7d52;
+      font-weight: 600;
+    }
+    .sort-toggle:hover {
+      background: #f5f3ef;
+    }
+    .lessons-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+    .lesson-group {
+      margin-bottom: 0.5rem;
+    }
+    .lesson-header {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    .lesson-header:hover {
+      background: #e8e6e1;
+    }
+    .lesson-header.active {
+      background: #2e7d52;
+      color: #fff;
+    }
+    .lesson-header .count {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+    .lesson-words {
+      padding-left: 0.75rem;
+      display: none;
+    }
+    .lesson-words.show {
+      display: block;
+    }
+    .lesson-word-item {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      color: #555;
+      cursor: pointer;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lesson-word-item:hover {
+      background: #e8e6e1;
+    }
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .word-display {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      width: 100%;
+    }
+    .word-header {
+      margin-bottom: 1.5rem;
+    }
+    .german-word {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #2e7d52;
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+    }
+    .word-meta-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .meta-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      background: #f5f3ef;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .meta-item.type {
+      background: #e8f5e9;
+      color: #2e7d52;
+    }
+    .meta-item.gender {
+      background: #fff3e0;
+      color: #b87333;
+    }
+    .meta-item.plural {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    .meanings-section {
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .meanings-text {
+      font-size: 1.125rem;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+    .sentences-section {
+      margin-bottom: 1.5rem;
+    }
+    .sentence-card {
+      background: #fff;
+      border: 1px solid #e8e6e1;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sentence-card:hover {
+      border-color: #b87333;
+      box-shadow: 0 2px 8px rgba(184, 115, 51, 0.1);
+    }
+    .sentence-de {
+      font-size: 1rem;
+      color: #1a1a1a;
+      margin-bottom: 0.25rem;
+    }
+    .sentence-en {
+      font-size: 0.875rem;
+      color: #666;
+    }
+    .sentence-card.hidden-en .sentence-en {
+      display: none;
+    }
+    .sentence-card.hidden-en .sentence-de::after {
+      content: " (click to show translation)";
+      font-size: 0.75rem;
+      color: #b87333;
+    }
+    .phrases-section {
+      margin-bottom: 1.5rem;
+    }
+    .phrase-card {
+      background: #faf8f4;
+      border-left: 3px solid #b87333;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0 6px 6px 0;
+    }
+    .phrase-de {
+      font-size: 0.9rem;
+      color: #1a1a1a;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+    .phrase-en {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .nav-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-top: 1px solid #e8e6e1;
+      background: #faf8f4;
+    }
+    .nav-btn {
+      padding: 0.75rem 1.5rem;
+      background: #2e7d52;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: #1b5e38;
+    }
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .word-counter {
+      font-size: 0.875rem;
+      color: #666;
+      font-weight: 500;
+    }
+    .loading-state, .error-state, .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+    .loading-state h2, .error-state h2, .empty-state h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #2e7d52;
+    }
+    .loading-state p, .error-state p, .empty-state p {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .error-state h2 {
+      color: #d32f2f;
+    }
+    @media (max-width: 768px) {
+      .app-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 40vh;
+      }
+      .german-word {
+        font-size: 2rem;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Loading...</h1>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>B1 Wortschatz</h1>
+      </div>
+      <div class="sidebar-controls">
+        <input type="text" id="search" class="search-box" placeholder="Search words...">
+        <button id="sort-toggle" class="sort-toggle">Sort: A–Z</button>
+      </div>
+      <div class="lessons-list" id="lessons-list"></div>
+    </aside>
+
+    <main class="main-content">
+      <div id="content-area" class="word-display"></div>
+      <div class="nav-controls">
+        <button id="prev-btn" class="nav-btn">← Previous</button>
+        <span id="word-counter" class="word-counter"></span>
+        <button id="next-btn" class="nav-btn">Next →</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const STATE = {
+        allWords: [],
+        filteredWords: [],
+        currentWordIndex: 0,
+        sortMode: 'alphabetical',
+        expandedLessons: new Set(),
+        lastWordNumber: 1
+      };
+
+      const ELEMENTS = {
+        search: document.getElementById('search'),
+        sortToggle: document.getElementById('sort-toggle'),
+        lessonsList: document.getElementById('lessons-list'),
+        contentArea: document.getElementById('content-area'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        wordCounter: document.getElementById('word-counter')
+      };
+
+      async function fetchWords() {
+        try {
+          const response = await fetch('/api/words');
+          if (!response.ok) throw new Error('Failed to fetch words');
+          const words = await response.json();
+          STATE.allWords = words;
+          STATE.filteredWords = [...words];
+          return words;
+        } catch (error) {
+          console.error('Error fetching words:', error);
+          showContent('error', { message: error.message });
+          return [];
+        }
+      }
+
+      async function fetchProgress() {
+        try {
+          const response = await fetch('/api/progress');
+          if (!response.ok) return;
+          const progress = await response.json();
+          STATE.lastWordNumber = progress.last_word_number || 1;
+          await loadLastWord();
+        } catch (error) {
+          console.error('Error fetching progress:', error);
+        }
+      }
+
+      async function loadLastWord() {
+        const index = STATE.filteredWords.findIndex(w => w.number === STATE.lastWordNumber);
+        if (index !== -1) {
+          STATE.currentWordIndex = index;
+          renderCurrentWord();
+          updateNavControls();
+        }
+      }
+
+      async function saveProgress(wordNumber) {
+        try {
+          await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ last_word_number: wordNumber })
+          });
+          STATE.lastWordNumber = wordNumber;
+        } catch (error) {
+          console.error('Error saving progress:', error);
+        }
+      }
+
+      function sortWords(words) {
+        const sorted = [...words];
+        if (STATE.sortMode === 'alphabetical') {
+          sorted.sort((a, b) => a.word.localeCompare(b.word));
+        } else {
+          sorted.sort((a, b) => {
+            if (a.lesson !== b.lesson) return a.lesson - b.lesson;
+            return a.number - b.number;
+          });
+        }
+        return sorted;
+      }
+
+      function filterWords(searchTerm) {
+        if (!searchTerm.trim()) {
+          STATE.filteredWords = sortWords([...STATE.allWords]);
+        } else {
+          const term = searchTerm.toLowerCase();
+          const filtered = STATE.allWords.filter(w =>
+            w.word.toLowerCase().includes(term) ||
+            w.meanings_en.toLowerCase().includes(term)
+          );
+          STATE.filteredWords = sortWords(filtered);
+        }
+        STATE.currentWordIndex = 0;
+        renderLessonsList();
+        renderCurrentWord();
+        updateNavControls();
+      }
+
+      function toggleSort() {
+        STATE.sortMode = STATE.sortMode === 'alphabetical' ? 'lesson' : 'alphabetical';
+        ELEMENTS.sortToggle.textContent = `Sort: ${STATE.sortMode === 'alphabetical' ? 'A–Z' : 'L1→L11'}`;
+        filterWords(ELEMENTS.search.value);
+      }
+
+      function groupWordsByLesson(words) {
+        const groups = {};
+        words.forEach(word => {
+          if (!groups[word.lesson]) {
+            groups[word.lesson] = [];
+          }
+          groups[word.lesson].push(word);
+        });
+        return groups;
+      }
+
+      function toggleLesson(lessonNum) {
+        if (STATE.expandedLessons.has(lessonNum)) {
+          STATE.expandedLessons.delete(lessonNum);
+        } else {
+          STATE.expandedLessons.add(lessonNum);
+        }
+        renderLessonsList();
+      }
+
+      function renderLessonsList() {
+        const groups = groupWordsByLesson(STATE.filteredWords);
+        let html = '';
+
+        const sortedLessons = Object.keys(groups).map(Number).sort((a, b) => a - b);
+
+        sortedLessons.forEach(lesson => {
+          const words = groups[lesson];
+          const isExpanded = STATE.expandedLessons.has(lesson);
+          const currentWord = STATE.filteredWords[STATE.currentWordIndex];
+          const isActive = currentWord && currentWord.lesson === lesson;
+
+          html += `
+            <div class="lesson-group">
+              <div class="lesson-header ${isActive ? 'active' : ''}" onclick="toggleLesson(${lesson})">
+                <span>Lesson ${lesson}</span>
+                <span class="count">${words.length}</span>
+              </div>
+              <div class="lesson-words ${isExpanded ? 'show' : ''}">
+                ${words.map(w => `
+                  <div class="lesson-word-item" onclick="goToWord(${w.number})">${w.word}</div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        });
+
+        ELEMENTS.lessonsList.innerHTML = html || '<p style="padding:0.75rem;color:#999;font-size:0.875rem;">No words found</p>';
+      }
+
+      function showContent(type, data = {}) {
+        let html = '';
+        switch (type) {
+          case 'loading':
+            html = `
+              <div class="loading-state">
+                <h2>Loading...</h2>
+                <p>Preparing your vocabulary</p>
+              </div>
+            `;
+            break;
+          case 'error':
+            html = `
+              <div class="error-state">
+                <h2>Error</h2>
+                <p>${data.message || 'Failed to load content'}</p>
+              </div>
+            `;
+            break;
+          case 'empty':
+            html = `
+              <div class="empty-state">
+                <h2>No Words Found</h2>
+                <p>Try adjusting your search or sort options</p>
+              </div>
+            `;
+            break;
+        }
+        ELEMENTS.contentArea.innerHTML = html;
+      }
+
+      function renderCurrentWord() {
+        if (STATE.filteredWords.length === 0) {
+          showContent('empty');
+          return;
+        }
+
+        const word = STATE.filteredWords[STATE.currentWordIndex];
+        if (!word) {
+          showContent('empty');
+          return;
+        }
+
+        const sentences = JSON.parse(word.sentences || '[]');
+        const phrases = JSON.parse(word.phrases || '[]');
+
+        let html = `
+          <div class="word-header">
+            <h1 class="german-word">${word.word}</h1>
+            <div class="word-meta-grid">
+              ${word.type ? `<span class="meta-item type">${word.type}</span>` : ''}
+              ${word.gender ? `<span class="meta-item gender">${word.gender}</span>` : ''}
+              ${word.plural ? `<span class="meta-item plural">${word.plural}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="meanings-section">
+            <div class="section-title">Meanings</div>
+            <div class="meanings-text">${word.meanings_en}</div>
+          </div>
+        `;
+
+        if (sentences.length > 0) {
+          html += `
+            <div class="sentences-section">
+              <div class="section-title">Example Sentences</div>
+              ${sentences.map(s => `
+                <div class="sentence-card" onclick="toggleSentence(this)">
+                  <div class="sentence-de">${s.de}</div>
+                  <div class="sentence-en">${s.en}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        if (phrases.length > 0) {
+          html += `
+            <div class="phrases-section">
+              <div class="section-title">Common Phrases</div>
+              ${phrases.map(p => `
+                <div class="phrase-card">
+                  <div class="phrase-de">${p.de}</div>
+                  <div class="phrase-en">${p.en}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        ELEMENTS.contentArea.innerHTML = html;
+        updateNavControls();
+        renderLessonsList();
+      }
+
+      function toggleSentence(card) {
+        card.classList.toggle('hidden-en');
+      }
+
+      function goToWord(number) {
+        const index = STATE.filteredWords.findIndex(w => w.number === number);
+        if (index !== -1) {
+          STATE.currentWordIndex = index;
+          renderCurrentWord();
+          saveProgress(number);
+        }
+      }
+
+      function goToPrevious() {
+        if (STATE.currentWordIndex > 0) {
+          STATE.currentWordIndex--;
+          renderCurrentWord();
+          const word = STATE.filteredWords[STATE.currentWordIndex];
+          saveProgress(word.number);
+        }
+      }
+
+      function goToNext() {
+        if (STATE.currentWordIndex < STATE.filteredWords.length - 1) {
+          STATE.currentWordIndex++;
+          renderCurrentWord();
+          const word = STATE.filteredWords[STATE.currentWordIndex];
+          saveProgress(word.number);
+        }
+      }
+
+      function updateNavControls() {
+        const hasWords = STATE.filteredWords.length > 0;
+        ELEMENTS.prevBtn.disabled = !hasWords || STATE.currentWordIndex === 0;
+        ELEMENTS.nextBtn.disabled = !hasWords || STATE.currentWordIndex === STATE.filteredWords.length - 1;
+
+        if (hasWords) {
+          const word = STATE.filteredWords[STATE.currentWordIndex];
+          ELEMENTS.wordCounter.textContent = `${word.number} / ${Math.max(...STATE.allWords.map(w => w.number))}`;
+        } else {
+          ELEMENTS.wordCounter.textContent = '';
+        }
+      }
+
+      ELEMENTS.search.addEventListener('input', (e) => filterWords(e.target.value));
+      ELEMENTS.sortToggle.addEventListener('click', toggleSort);
+      ELEMENTS.prevBtn.addEventListener('click', goToPrevious);
+      ELEMENTS.nextBtn.addEventListener('click', goToNext);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') goToPrevious();
+        if (e.key === 'ArrowRight') goToNext();
+      });
+
+      window.toggleLesson = toggleLesson;
+      window.toggleSentence = toggleSentence;
+      window.goToWord = goToWord;
+
+      async function init() {
+        showContent('loading');
+        await fetchWords();
+        await fetchProgress();
+        filterWords(ELEMENTS.search.value);
+      }
+
+      init();
+    })();
+  </script>
 </body>
 </html>

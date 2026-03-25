@@ -15,31 +15,14 @@ test.describe('API Endpoints', () => {
   });
 
   test.describe('GET /api/words', () => {
-    test('should return all words with default pagination', async () => {
+    test('should return all words', async () => {
       const response = await request(app)
         .get('/api/words')
         .expect('Content-Type', /json/)
         .expect(200);
 
-      assert.strictEqual(response.body.words.length, 5);
-      assert.strictEqual(response.body.page, 1);
-      assert.strictEqual(response.body.perPage, 20);
-      assert.strictEqual(response.body.total, 5);
-      assert.strictEqual(response.body.totalPages, 1);
-    });
-
-    test('should paginate results', async () => {
-      const response = await request(app)
-        .get('/api/words?page=1&per_page=2')
-        .expect('Content-Type', /json/)
-        .expect(200);
-
-      assert.strictEqual(response.body.words.length, 2);
-      assert.strictEqual(response.body.page, 1);
-      assert.strictEqual(response.body.perPage, 2);
-      assert.strictEqual(response.body.totalPages, 3);
-      assert.strictEqual(response.body.words[0].word, 'Abfall');
-      assert.strictEqual(response.body.words[1].word, 'Abflug');
+      assert.ok(Array.isArray(response.body));
+      assert.strictEqual(response.body.length, 5);
     });
 
     test('should include all word fields', async () => {
@@ -47,7 +30,7 @@ test.describe('API Endpoints', () => {
         .get('/api/words')
         .expect(200);
 
-      const word = response.body.words[0];
+      const word = response.body[0];
       assert.strictEqual(word.number, 1);
       assert.strictEqual(word.word, 'Abfall');
       assert.strictEqual(word.lesson, 1);
