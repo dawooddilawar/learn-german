@@ -412,6 +412,9 @@
       }
 
       function filterWords(searchTerm) {
+        // Preserve current word before re-filtering
+        const currentWord = STATE.filteredWords[STATE.currentWordIndex];
+
         if (!searchTerm.trim()) {
           STATE.filteredWords = sortWords([...STATE.allWords]);
         } else {
@@ -422,7 +425,15 @@
           );
           STATE.filteredWords = sortWords(filtered);
         }
-        STATE.currentWordIndex = 0;
+
+        // Try to stay on the same word, or go to first if not found
+        if (currentWord) {
+          const newIndex = STATE.filteredWords.findIndex(w => w.number === currentWord.number);
+          STATE.currentWordIndex = newIndex !== -1 ? newIndex : 0;
+        } else {
+          STATE.currentWordIndex = 0;
+        }
+
         renderLessonsList();
         renderCurrentWord();
         updateNavControls();
