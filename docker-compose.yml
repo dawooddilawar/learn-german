@@ -8,17 +8,17 @@ services:
     environment:
       - VIRTUAL_HOST=learngerman.dawooddilawar.com
       - LETSENCRYPT_HOST=learngerman.dawooddilawar.com
-      - LETSENCRYPT_EMAIL=admin@dawooddilawar.com
+      - LETSENCRYPT_EMAIL=dawood@dawooddilawar.com
     volumes:
       # Persist SQLite database
       - ./data/db.sqlite:/app/data/db.sqlite
       # Mount .env file for API key
       - ./.env:/app/.env:ro
     networks:
-      - nginx-proxy
+      - proxy-network
     expose:
       - "3000"
 
 networks:
-  nginx-proxy:
-    external: true
+  proxy-network:
+    external: true 
