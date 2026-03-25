@@ -3,3 +3,5 @@ data/words.csv
 .env
 node_modules/
 .superpowers/
+docs/
+.claude/
