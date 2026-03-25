@@ -197,11 +197,67 @@ function createApp(db) {
   return app;
 }
 
+// Initialize database schema
+function initializeSchema(db) {
+  // Check if words table exists
+  const tableExists = db.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type='table' AND name='words'
+  `).get();
+
+  if (!tableExists) {
+    console.log('Initializing database schema...');
+
+    db.exec(`
+      CREATE TABLE words (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        number INTEGER NOT NULL UNIQUE,
+        word TEXT NOT NULL,
+        lesson TEXT NOT NULL,
+        type TEXT,
+        gender TEXT,
+        plural TEXT,
+        meanings_en TEXT,
+        sentences TEXT,
+        phrases TEXT
+      );
+
+      CREATE TABLE sentences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word_id INTEGER NOT NULL,
+        sentence_en TEXT NOT NULL,
+        sentence_de TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words(id)
+      );
+
+      CREATE TABLE phrases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word_id INTEGER NOT NULL,
+        phrase_en TEXT NOT NULL,
+        phrase_de TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words(id)
+      );
+
+      CREATE TABLE progress (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_word_number INTEGER NOT NULL DEFAULT 1
+      );
+
+      INSERT OR IGNORE INTO progress (id, last_word_number) VALUES (1, 1);
+    `);
+
+    console.log('Database schema initialized.');
+  }
+}
+
 // Create database connection and start server if run directly
 if (require.main === module) {
   const Database = require('better-sqlite3');
   const dbPath = path.join(__dirname, 'data', 'db.sqlite');
   const db = new Database(dbPath);
+
+  // Initialize schema if needed
+  initializeSchema(db);
 
   const app = createApp(db);
   const port = process.env.PORT || 3000;

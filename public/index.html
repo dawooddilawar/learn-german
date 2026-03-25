@@ -197,21 +197,25 @@
       box-shadow: 0 2px 8px rgba(184, 115, 51, 0.1);
     }
     .sentence-de {
-      font-size: 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
       color: #1a1a1a;
-      margin-bottom: 0.25rem;
+      display: none;
+      height: 28px;
+      align-items: center;
     }
     .sentence-en {
       font-size: 0.875rem;
       color: #666;
+      height: 28px;
+      display: flex;
+      align-items: center;
     }
-    .sentence-card.hidden-en .sentence-en {
+    .sentence-card.show-de .sentence-de {
+      display: flex;
+    }
+    .sentence-card.show-de .sentence-en {
       display: none;
-    }
-    .sentence-card.hidden-en .sentence-de::after {
-      content: " (click to show translation)";
-      font-size: 0.75rem;
-      color: #b87333;
     }
     .phrases-section {
       margin-bottom: 1.5rem;
@@ -307,7 +311,7 @@
       </div>
       <div class="sidebar-controls">
         <input type="text" id="search" class="search-box" placeholder="Search words...">
-        <button id="sort-toggle" class="sort-toggle">Sort: A–Z</button>
+        <button id="sort-toggle" class="sort-toggle">Sort: L1→L11</button>
       </div>
       <div class="lessons-list" id="lessons-list"></div>
     </aside>
@@ -330,7 +334,7 @@
         allWords: [],
         filteredWords: [],
         currentWordIndex: 0,
-        sortMode: 'alphabetical',
+        sortMode: 'lesson',
         expandedLessons: new Set(),
         lastWordNumber: 1
       };
@@ -576,7 +580,7 @@
       }
 
       function toggleSentence(card) {
-        card.classList.toggle('hidden-en');
+        card.classList.toggle('show-de');
       }
 
       function goToWord(number) {
