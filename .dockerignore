@@ -1,0 +1,6 @@
+.env
+data/db.sqlite
+node_modules/
+.git/
+docs/
+.superpowers/

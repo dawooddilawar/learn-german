@@ -1,0 +1,21 @@
+{
+  "name": "german-b1-vocab",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "parse": "node scripts/parse-pdf.js",
+    "generate": "node scripts/generate-data.js",
+    "test": "node --test tests/api.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^9.4.3",
+    "pdf-parse": "^1.1.1",
+    "@anthropic-ai/sdk": "^0.24.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
