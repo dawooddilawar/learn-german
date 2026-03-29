@@ -247,6 +247,7 @@
       border-left: 3px solid #2e7d52;
       border-radius: 4px;
       font-size: 0.9rem;
+      transition: opacity 0.2s ease, max-height 0.3s ease;
     }
     .sentence-breakdown h4 {
       margin: 0 0 0.5rem 0;
@@ -278,6 +279,10 @@
     .sentence-breakdown .type {
       color: #666;
       font-size: 0.85rem;
+    }
+    .sentence-breakdown.loading {
+      opacity: 0.6;
+      font-style: italic;
     }
     .phrases-section {
       margin-bottom: 1.5rem;
@@ -708,7 +713,12 @@
                     <div class="sentence-de">${s.de}</div>
                     <div class="sentence-en">${s.en}</div>
                   </div>
-                  <button class="info-icon" onclick="showSentenceBreakdown(event, ${s.id})" title="Show grammatical breakdown">ℹ️</button>
+                  <button class="info-icon"
+                          onclick="showSentenceBreakdown(event, ${s.id})"
+                          aria-label="Show grammatical breakdown"
+                          aria-expanded="false">
+                    ℹ️
+                  </button>
                 </div>
               `).join('')}
             </div>
@@ -739,21 +749,38 @@
       }
 
       async function showSentenceBreakdown(event, sentenceId) {
-        event.stopPropagation(); // prevent toggling EN↔DE
+        event.stopPropagation();
 
         const card = event.target.closest('.sentence-card');
+        const button = event.target.closest('.info-icon');
+
+        // Prevent multiple simultaneous requests
+        if (card.hasAttribute('data-loading')) {
+          return;
+        }
+
         const existingBreakdown = card.querySelector('.sentence-breakdown');
 
         // If already showing, hide it
         if (existingBreakdown) {
           existingBreakdown.remove();
+          button.setAttribute('aria-expanded', 'false');
           return;
         }
 
+        // Set loading state
+        card.setAttribute('data-loading', 'true');
+
+        // Helper function to create elements safely
+        function createElement(tag, className, text) {
+          const el = document.createElement(tag);
+          if (className) el.className = className;
+          if (text) el.textContent = text;
+          return el;
+        }
+
         // Show loading state
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'sentence-breakdown';
-        loadingDiv.textContent = 'Loading breakdown...';
+        const loadingDiv = createElement('div', 'sentence-breakdown loading', 'Loading breakdown...');
         card.appendChild(loadingDiv);
 
         try {
@@ -766,50 +793,57 @@
           // Remove loading
           loadingDiv.remove();
 
-          // Render breakdown
-          const breakdownDiv = document.createElement('div');
-          breakdownDiv.className = 'sentence-breakdown';
+          // Render breakdown using safe DOM creation
+          const breakdownDiv = createElement('div', 'sentence-breakdown');
+          breakdownDiv.appendChild(createElement('h4', null, 'Grammatical Breakdown'));
 
-          let html = `
-            <h4>Grammatical Breakdown</h4>
-            <div class="section">
-              <div class="section-title">Structure</div>
-              <div>${data.breakdown.structure_overview}</div>
-            </div>
-          `;
+          // Structure section
+          const structureSection = createElement('div', 'section');
+          structureSection.appendChild(createElement('div', 'section-title', 'Structure'));
+          structureSection.appendChild(createElement('div', null, data.breakdown.structure_overview));
+          breakdownDiv.appendChild(structureSection);
 
+          // Grammar points section
           if (data.breakdown.grammar_points && data.breakdown.grammar_points.length > 0) {
-            html += `
-              <div class="section">
-                <div class="section-title">Grammar Points</div>
-                ${data.breakdown.grammar_points.map(point => `
-                  <div class="grammar-point">
-                    <span class="category">${point.category}:</span> ${point.explanation}
-                  </div>
-                `).join('')}
-              </div>
-            `;
+            const grammarSection = createElement('div', 'section');
+            grammarSection.appendChild(createElement('div', 'section-title', 'Grammar Points'));
+            data.breakdown.grammar_points.forEach(point => {
+              const pointDiv = createElement('div', 'grammar-point');
+              const categorySpan = createElement('span', 'category', point.category + ':');
+              const explanationText = document.createTextNode(' ' + point.explanation);
+              pointDiv.appendChild(categorySpan);
+              pointDiv.appendChild(explanationText);
+              grammarSection.appendChild(pointDiv);
+            });
+            breakdownDiv.appendChild(grammarSection);
           }
 
+          // Word meanings section
           if (data.breakdown.word_meanings && data.breakdown.word_meanings.length > 0) {
-            html += `
-              <div class="section">
-                <div class="section-title">Word Meanings</div>
-                ${data.breakdown.word_meanings.map(word => `
-                  <div class="word-meaning">
-                    <span class="word">${word.word}</span>
-                    <span class="type">(${word.type})</span>: ${word.meaning}
-                  </div>
-                `).join('')}
-              </div>
-            `;
+            const meaningsSection = createElement('div', 'section');
+            meaningsSection.appendChild(createElement('div', 'section-title', 'Word Meanings'));
+            data.breakdown.word_meanings.forEach(word => {
+              const wordDiv = createElement('div', 'word-meaning');
+              const wordSpan = createElement('span', 'word', word.word);
+              const typeSpan = createElement('span', 'type', '(' + word.type + ')');
+              const meaningText = document.createTextNode(': ' + word.meaning);
+              wordDiv.appendChild(wordSpan);
+              wordDiv.appendChild(typeSpan);
+              wordDiv.appendChild(meaningText);
+              meaningsSection.appendChild(wordDiv);
+            });
+            breakdownDiv.appendChild(meaningsSection);
           }
 
-          breakdownDiv.innerHTML = html;
           card.appendChild(breakdownDiv);
+          button.setAttribute('aria-expanded', 'true');
         } catch (error) {
           loadingDiv.textContent = 'Failed to load breakdown. Please try again.';
+          loadingDiv.classList.remove('loading');
           console.error('Error loading breakdown:', error);
+        } finally {
+          // Remove loading state
+          card.removeAttribute('data-loading');
         }
       }
 
