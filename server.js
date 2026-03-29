@@ -26,7 +26,7 @@ function createApp(db) {
     // Attach sentences and phrases for each word
     const wordsWithRelations = words.map(word => {
       const sentences = db.prepare(`
-        SELECT sentence_en as en, sentence_de as de
+        SELECT id, sentence_en as en, sentence_de as de
         FROM sentences
         WHERE word_id = ?
         ORDER BY id ASC
@@ -65,7 +65,7 @@ function createApp(db) {
 
     // Get sentences and phrases
     const sentences = db.prepare(`
-      SELECT sentence_en as en, sentence_de as de
+      SELECT id, sentence_en as en, sentence_de as de
       FROM sentences
       WHERE word_id = ?
       ORDER BY id ASC
@@ -105,7 +105,7 @@ function createApp(db) {
     if (exactMatch.length > 0) {
       const wordsWithRelations = exactMatch.map(word => {
         const sentences = db.prepare(`
-          SELECT sentence_en as en, sentence_de as de
+          SELECT id, sentence_en as en, sentence_de as de
           FROM sentences
           WHERE word_id = ?
           ORDER BY id ASC
@@ -139,7 +139,7 @@ function createApp(db) {
 
     const wordsWithRelations = words.map(word => {
       const sentences = db.prepare(`
-        SELECT sentence_en as en, sentence_de as de
+        SELECT id, sentence_en as en, sentence_de as de
         FROM sentences
         WHERE word_id = ?
         ORDER BY id ASC

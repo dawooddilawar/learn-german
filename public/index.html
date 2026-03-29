@@ -217,6 +217,68 @@
     .sentence-card.show-de .sentence-en {
       display: none;
     }
+    .sentence-card {
+      position: relative;
+      padding-right: 40px;
+    }
+    .sentence-content {
+      flex: 1;
+    }
+    .info-icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .info-icon:hover {
+      opacity: 1;
+    }
+    .sentence-breakdown {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f5f3ef;
+      border-left: 3px solid #2e7d52;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .sentence-breakdown h4 {
+      margin: 0 0 0.5rem 0;
+      color: #2e7d52;
+      font-size: 0.95rem;
+    }
+    .sentence-breakdown .section {
+      margin-bottom: 0.75rem;
+    }
+    .sentence-breakdown .section-title {
+      font-weight: 600;
+      color: #1a2744;
+      margin-bottom: 0.25rem;
+    }
+    .sentence-breakdown .grammar-point,
+    .sentence-breakdown .word-meaning {
+      margin-bottom: 0.5rem;
+      padding-left: 0.75rem;
+      border-left: 2px solid #b87333;
+    }
+    .sentence-breakdown .category {
+      font-weight: 600;
+      color: #b87333;
+    }
+    .sentence-breakdown .word {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .sentence-breakdown .type {
+      color: #666;
+      font-size: 0.85rem;
+    }
     .phrases-section {
       margin-bottom: 1.5rem;
     }
@@ -641,9 +703,12 @@
             <div class="sentences-section">
               <div class="section-title">Example Sentences</div>
               ${sentences.map(s => `
-                <div class="sentence-card" onclick="toggleSentence(this)">
-                  <div class="sentence-de">${s.de}</div>
-                  <div class="sentence-en">${s.en}</div>
+                <div class="sentence-card" data-sentence-id="${s.id}" onclick="toggleSentence(this)">
+                  <div class="sentence-content">
+                    <div class="sentence-de">${s.de}</div>
+                    <div class="sentence-en">${s.en}</div>
+                  </div>
+                  <button class="info-icon" onclick="showSentenceBreakdown(event, ${s.id})" title="Show grammatical breakdown">ℹ️</button>
                 </div>
               `).join('')}
             </div>
@@ -671,6 +736,81 @@
 
       function toggleSentence(card) {
         card.classList.toggle('show-de');
+      }
+
+      async function showSentenceBreakdown(event, sentenceId) {
+        event.stopPropagation(); // prevent toggling EN↔DE
+
+        const card = event.target.closest('.sentence-card');
+        const existingBreakdown = card.querySelector('.sentence-breakdown');
+
+        // If already showing, hide it
+        if (existingBreakdown) {
+          existingBreakdown.remove();
+          return;
+        }
+
+        // Show loading state
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'sentence-breakdown';
+        loadingDiv.textContent = 'Loading breakdown...';
+        card.appendChild(loadingDiv);
+
+        try {
+          const response = await fetch(`/api/sentence/${sentenceId}/breakdown`);
+          if (!response.ok) {
+            throw new Error('Failed to load breakdown');
+          }
+          const data = await response.json();
+
+          // Remove loading
+          loadingDiv.remove();
+
+          // Render breakdown
+          const breakdownDiv = document.createElement('div');
+          breakdownDiv.className = 'sentence-breakdown';
+
+          let html = `
+            <h4>Grammatical Breakdown</h4>
+            <div class="section">
+              <div class="section-title">Structure</div>
+              <div>${data.breakdown.structure_overview}</div>
+            </div>
+          `;
+
+          if (data.breakdown.grammar_points && data.breakdown.grammar_points.length > 0) {
+            html += `
+              <div class="section">
+                <div class="section-title">Grammar Points</div>
+                ${data.breakdown.grammar_points.map(point => `
+                  <div class="grammar-point">
+                    <span class="category">${point.category}:</span> ${point.explanation}
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+
+          if (data.breakdown.word_meanings && data.breakdown.word_meanings.length > 0) {
+            html += `
+              <div class="section">
+                <div class="section-title">Word Meanings</div>
+                ${data.breakdown.word_meanings.map(word => `
+                  <div class="word-meaning">
+                    <span class="word">${word.word}</span>
+                    <span class="type">(${word.type})</span>: ${word.meaning}
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+
+          breakdownDiv.innerHTML = html;
+          card.appendChild(breakdownDiv);
+        } catch (error) {
+          loadingDiv.textContent = 'Failed to load breakdown. Please try again.';
+          console.error('Error loading breakdown:', error);
+        }
       }
 
       function goToWord(number) {
@@ -727,6 +867,7 @@
       window.toggleLesson = toggleLesson;
       window.toggleSentence = toggleSentence;
       window.goToWord = goToWord;
+      window.showSentenceBreakdown = showSentenceBreakdown;
 
       async function init() {
         showContent('loading');
