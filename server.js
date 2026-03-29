@@ -1,6 +1,10 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
+
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const GEMINI_MODEL = 'gemini-2.0-flash-lite';
 
 function createApp(db) {
   const app = express();
@@ -182,6 +186,69 @@ function createApp(db) {
     const progress = db.prepare('SELECT last_word_number FROM progress WHERE id = 1').get();
 
     res.json(progress);
+  });
+
+  // GET /api/sentence/:id/breakdown - Get grammatical breakdown for a sentence
+  app.get('/api/sentence/:id/breakdown', async (req, res) => {
+    const sentenceId = parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(sentenceId) || sentenceId < 1) {
+      return res.status(400).json({ error: 'Invalid sentence id' });
+    }
+
+    // Check cache first
+    const cached = db.prepare('SELECT breakdown_json FROM sentence_breakdowns WHERE sentence_id = ?').get(sentenceId);
+    if (cached) {
+      return res.json({ breakdown: JSON.parse(cached.breakdown_json) });
+    }
+
+    // Get sentence from DB
+    const sentence = db.prepare('SELECT sentence_de FROM sentences WHERE id = ?').get(sentenceId);
+    if (!sentence) {
+      return res.status(404).json({ error: 'Sentence not found' });
+    }
+
+    // Build prompt
+    const prompt = `You are a German language expert. Analyze this German sentence grammatically:
+
+"${sentence.sentence_de}"
+
+Return ONLY valid JSON in this exact format:
+{
+  "structure_overview": "Brief description of the sentence structure (e.g. Subject + Modal verb + Accusative object + Infinitive at end)",
+  "grammar_points": [
+    { "category": "Grammar concept name", "explanation": "Clear explanation of how it applies in this sentence" }
+  ],
+  "word_meanings": [
+    { "word": "German word", "type": "noun/verb/adjective/etc", "meaning": "English meaning" }
+  ]
+}
+
+grammar_points: include Dativ/Akkusativ/Nominativ usage, verb tenses, modal verbs, past participle, Konjunktiv, composite words, word order rules, or any other grammatically notable features in this sentence. Only include points that are actually present.
+
+word_meanings: include the main content words (verbs, nouns, adjectives) — skip articles, common pronouns (ich/du/er/wir) and basic prepositions unless they are the focus of a grammar point.`;
+
+    // Call Gemini API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+        })
+      }
+    );
+    const data = await response.json();
+    const text = data.candidates[0].content.parts[0].text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const breakdown = JSON.parse(jsonMatch[0]);
+
+    // Save to cache
+    db.prepare('INSERT INTO sentence_breakdowns (sentence_id, breakdown_json) VALUES (?, ?)').run(sentenceId, JSON.stringify(breakdown));
+
+    return res.json({ breakdown });
   });
 
   // SPA fallback - serve index.html for non-API routes
