@@ -40,6 +40,14 @@ function createTestDb() {
     );
 
     INSERT OR IGNORE INTO progress (id, last_word_number) VALUES (1, 1);
+
+    CREATE TABLE IF NOT EXISTS sentence_breakdowns (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      sentence_id  INTEGER NOT NULL UNIQUE,
+      breakdown_json TEXT NOT NULL,
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sentence_id) REFERENCES sentences(id)
+    );
   `);
 
   const insertWord = db.prepare(`

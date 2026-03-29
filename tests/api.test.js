@@ -232,4 +232,64 @@ test.describe('API Endpoints', () => {
       assert.strictEqual(response.body.error, 'Not found');
     });
   });
+
+  test.describe('GET /api/sentence/:id/breakdown', () => {
+    test('should return 400 for non-integer id', async () => {
+      const response = await request(app)
+        .get('/api/sentence/abc/breakdown')
+        .expect('Content-Type', /json/)
+        .expect(400);
+
+      assert.strictEqual(response.body.error, 'Invalid sentence id');
+    });
+
+    test('should return 400 for id of 0', async () => {
+      const response = await request(app)
+        .get('/api/sentence/0/breakdown')
+        .expect('Content-Type', /json/)
+        .expect(400);
+
+      assert.strictEqual(response.body.error, 'Invalid sentence id');
+    });
+
+    test('should return 400 for negative id', async () => {
+      const response = await request(app)
+        .get('/api/sentence/-5/breakdown')
+        .expect('Content-Type', /json/)
+        .expect(400);
+
+      assert.strictEqual(response.body.error, 'Invalid sentence id');
+    });
+
+    test('should return 404 when sentence does not exist', async () => {
+      const response = await request(app)
+        .get('/api/sentence/99999/breakdown')
+        .expect('Content-Type', /json/)
+        .expect(404);
+
+      assert.strictEqual(response.body.error, 'Sentence not found');
+    });
+
+    test('should return 200 with breakdown object from cache', async () => {
+      // Get a valid sentence id from the seeded data
+      const sentence = db.prepare('SELECT id FROM sentences LIMIT 1').get();
+      const sentenceId = sentence.id;
+      const cachedBreakdown = { structure_overview: 'test', grammar_points: [], word_meanings: [] };
+
+      db.prepare('INSERT INTO sentence_breakdowns (sentence_id, breakdown_json) VALUES (?, ?)').run(
+        sentenceId,
+        JSON.stringify(cachedBreakdown)
+      );
+
+      const response = await request(app)
+        .get(`/api/sentence/${sentenceId}/breakdown`)
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      assert.ok(response.body.breakdown);
+      assert.strictEqual(response.body.breakdown.structure_overview, 'test');
+      assert.ok(Array.isArray(response.body.breakdown.grammar_points));
+      assert.ok(Array.isArray(response.body.breakdown.word_meanings));
+    });
+  });
 });

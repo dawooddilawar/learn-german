@@ -199,7 +199,12 @@ function createApp(db) {
     // Check cache first
     const cached = db.prepare('SELECT breakdown_json FROM sentence_breakdowns WHERE sentence_id = ?').get(sentenceId);
     if (cached) {
-      return res.json({ breakdown: JSON.parse(cached.breakdown_json) });
+      try {
+        return res.json({ breakdown: JSON.parse(cached.breakdown_json) });
+      } catch (e) {
+        // corrupt cache row — fall through to re-fetch
+        db.prepare('DELETE FROM sentence_breakdowns WHERE sentence_id = ?').run(sentenceId);
+      }
     }
 
     // Get sentence from DB
@@ -229,29 +234,27 @@ grammar_points: include Dativ/Akkusativ/Nominativ usage, verb tenses, modal verb
 word_meanings: include the main content words (verbs, nouns, adjectives) — skip articles, common pronouns (ich/du/er/wir) and basic prepositions unless they are the focus of a grammar point.`;
 
     // Call Gemini API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
-        })
-      }
-    );
-    if (!response.ok) {
-      return res.status(502).json({ error: 'Gemini API error' });
-    }
-    const data = await response.json();
     let breakdown;
     try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 1024, responseMimeType: 'application/json' }
+          })
+        }
+      );
+      if (!response.ok) {
+        return res.status(502).json({ error: 'Gemini API error' });
+      }
+      const data = await response.json();
       const text = data.candidates[0].content.parts[0].text;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON in response');
-      breakdown = JSON.parse(jsonMatch[0]);
+      breakdown = JSON.parse(text);
     } catch (e) {
-      return res.status(502).json({ error: 'Failed to parse Gemini response' });
+      return res.status(502).json({ error: 'Failed to get breakdown from Gemini' });
     }
 
     // Save to cache
