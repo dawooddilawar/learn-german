@@ -244,10 +244,29 @@ function initializeSchema(db) {
       );
 
       INSERT OR IGNORE INTO progress (id, last_word_number) VALUES (1, 1);
+
+      CREATE TABLE IF NOT EXISTS sentence_breakdowns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sentence_id INTEGER NOT NULL UNIQUE,
+        breakdown_json TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sentence_id) REFERENCES sentences(id)
+      );
     `);
 
     console.log('Database schema initialized.');
   }
+
+  // Migration: ensure sentence_breakdowns exists on pre-existing databases
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sentence_breakdowns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sentence_id INTEGER NOT NULL UNIQUE,
+      breakdown_json TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sentence_id) REFERENCES sentences(id)
+    );
+  `);
 }
 
 // Create database connection and start server if run directly
