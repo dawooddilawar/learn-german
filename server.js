@@ -240,10 +240,19 @@ word_meanings: include the main content words (verbs, nouns, adjectives) — ski
         })
       }
     );
+    if (!response.ok) {
+      return res.status(502).json({ error: 'Gemini API error' });
+    }
     const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const breakdown = JSON.parse(jsonMatch[0]);
+    let breakdown;
+    try {
+      const text = data.candidates[0].content.parts[0].text;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in response');
+      breakdown = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      return res.status(502).json({ error: 'Failed to parse Gemini response' });
+    }
 
     // Save to cache
     db.prepare('INSERT INTO sentence_breakdowns (sentence_id, breakdown_json) VALUES (?, ?)').run(sentenceId, JSON.stringify(breakdown));
