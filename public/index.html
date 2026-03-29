@@ -201,13 +201,14 @@
       font-weight: 600;
       color: #1a1a1a;
       display: none;
-      height: 28px;
+      min-height: 28px;
       align-items: center;
+      gap: 0.5rem;
     }
     .sentence-en {
       font-size: 0.875rem;
       color: #666;
-      height: 28px;
+      min-height: 28px;
       display: flex;
       align-items: center;
     }
@@ -299,10 +300,45 @@
       color: #1a1a1a;
       font-weight: 500;
       margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     .phrase-en {
       font-size: 0.8rem;
       color: #666;
+    }
+    .word-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .speak-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: #bbb;
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      transition: color 0.15s, background 0.15s;
+      line-height: 1;
+      margin-left: auto;
+    }
+    .word-title-row .speak-btn {
+      margin-left: 0;
+    }
+    .phrase-de .speak-btn {
+      margin-left: auto;
+    }
+    .speak-btn:hover {
+      color: #2e7d52;
+      background: rgba(46, 125, 82, 0.1);
+    }
+    .speak-btn.speaking {
+      color: #2e7d52;
     }
     .nav-controls {
       display: flex;
@@ -689,7 +725,12 @@
 
         let html = `
           <div class="word-header">
-            <h1 class="german-word">${word.word}</h1>
+            <div class="word-title-row">
+              <h1 class="german-word">${word.word}</h1>
+              <button class="speak-btn" data-speak="${escAttr(word.word)}" onclick="speakGerman(this)" title="Aussprechen">
+                ${SPEAKER_SVG}
+              </button>
+            </div>
             <div class="word-meta-grid">
               ${word.type ? `<span class="meta-item type">${word.type}</span>` : ''}
               ${word.gender ? `<span class="meta-item gender">${word.gender}</span>` : ''}
@@ -710,7 +751,12 @@
               ${sentences.map(s => `
                 <div class="sentence-card" data-sentence-id="${s.id}" onclick="toggleSentence(this)">
                   <div class="sentence-content">
-                    <div class="sentence-de">${s.de}</div>
+                    <div class="sentence-de">
+                      <span>${s.de}</span>
+                      <button class="speak-btn" data-speak="${escAttr(s.de)}" onclick="event.stopPropagation(); speakGerman(this)" title="Aussprechen">
+                        ${SPEAKER_SVG}
+                      </button>
+                    </div>
                     <div class="sentence-en">${s.en}</div>
                   </div>
                   <button class="info-icon"
@@ -731,7 +777,12 @@
               <div class="section-title">Common Phrases</div>
               ${phrases.map(p => `
                 <div class="phrase-card">
-                  <div class="phrase-de">${p.de}</div>
+                  <div class="phrase-de">
+                    <span>${p.de}</span>
+                    <button class="speak-btn" data-speak="${escAttr(p.de)}" onclick="speakGerman(this)" title="Aussprechen">
+                      ${SPEAKER_SVG}
+                    </button>
+                  </div>
                   <div class="phrase-en">${p.en}</div>
                 </div>
               `).join('')}
@@ -902,6 +953,56 @@
       window.toggleSentence = toggleSentence;
       window.goToWord = goToWord;
       window.showSentenceBreakdown = showSentenceBreakdown;
+
+      const TTS = (function() {
+        if (!window.speechSynthesis) return { speak: function() {}, available: false };
+
+        let germanVoice = null;
+        let activeBtn = null;
+
+        function loadVoices() {
+          const voices = window.speechSynthesis.getVoices();
+          germanVoice = voices.find(v => v.lang === 'de-DE' && v.localService)
+                     || voices.find(v => v.lang === 'de-DE')
+                     || voices.find(v => v.lang.startsWith('de'));
+        }
+
+        loadVoices();
+        window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+
+        function speak(text, btn) {
+          window.speechSynthesis.cancel();
+          if (activeBtn) { activeBtn.classList.remove('speaking'); activeBtn = null; }
+
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'de-DE';
+          utterance.rate = 0.85;
+          if (germanVoice) utterance.voice = germanVoice;
+
+          if (btn) {
+            activeBtn = btn;
+            btn.classList.add('speaking');
+            utterance.onend = utterance.onerror = function() {
+              btn.classList.remove('speaking');
+              if (activeBtn === btn) activeBtn = null;
+            };
+          }
+
+          window.speechSynthesis.speak(utterance);
+        }
+
+        return { speak: speak, available: true };
+      })();
+
+      const SPEAKER_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>';
+
+      function escAttr(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      }
+
+      window.speakGerman = function(btn) {
+        TTS.speak(btn.dataset.speak, btn);
+      };
 
       async function init() {
         showContent('loading');
